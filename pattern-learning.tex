@@ -1,0 +1,164 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}  
+\usepackage{amsthm}  
+\usepackage{geometry} % For better margins
+\usepackage{enumitem} % For improved lists
+\usepackage{listings} % For code listing
+\usepackage{hyperref} % For clickable links
+
+% Define theorem-like environments
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+
+% Code listing style for assembly
+\lstset{
+    language=[x86masm]Assembler,
+    basicstyle=\ttfamily\small,
+    numbers=left,
+    numberstyle=\tiny,
+    stepnumber=1,
+    numbersep=5pt,
+    frame=single,
+    breaklines=true,
+    breakatwhitespace=true,
+    tabsize=4
+}
+
+\begin{document}
+
+\title{Mathematical Object Definition and Its Applications}
+\author{}
+\date{March 08, 2025}
+\maketitle
+
+\section{Introduction}
+This document explores an abstract mathematical system inspired by symbolic dynamics and rewriting systems, with elements denoted by symbols such as $*$, $\mathbin{\&}$, $1$, and $x$. These elements interact through a set of rewriting rules and a length function, formalized below. The system is designed to model complex transformations with applications in computation and cryptography.
+
+\section{Definition of the System}
+The system operates over a set of symbols $\mathcal{S} = \{*, \mathbin{\&}, 1, x\}$ and is defined by the following rewriting rules:
+\begin{align*}
+    * &\rightarrow 1, \\
+    \mathbin{\&} &\rightarrow *1, \\
+    * + 1 &\rightarrow \mathbin{\&}*(1x), \\
+    * + 1 &\rightarrow \mathbin{\&} + 1.
+\end{align*}
+
+\begin{remark}
+    These relations are interpreted as non-deterministic rewriting rules rather than strict equalities.
+\end{remark}
+
+A length function $\text{Len}: \mathcal{S} \to \mathbb{R} \cup \{\infty\}$ is defined:
+\begin{align*}
+    \text{Len}(c) &= \begin{cases} 
+    1, & \text{if } c = 1, \\
+    x, & \text{if } c \in \{x, \mathbin{\&}\}, \\
+    \infty, & \text{if } c = *.
+    \end{cases}
+\end{align*}
+
+\section{Fixed Point Theorems in Symbol Substitution Spaces}
+Consider a symbol space $\mathcal{S} = \{*, \mathbin{\&}, 1, x\}$ with a substitution mapping $\sigma: \mathcal{S} \to \mathcal{S}^*$:
+\begin{align*}
+    \sigma(*) &= 1 \text{ or } \mathbin{\&}1, \\
+    \sigma(\mathbin{\&}) &= *1, \\
+    \sigma(1) &= 1, \\
+    \sigma(x) &= x.
+\end{align*}
+
+The fixed point set is:
+\[
+\mathcal{F}_\sigma = \{s \in \mathcal{S}^* : \exists n \in \mathbb{N}, \sigma^n(s) = s\}.
+\]
+
+\begin{theorem}
+    The fixed point set $\mathcal{F}_\sigma$ contains at least one infinite sequence.
+\end{theorem}
+
+\begin{proof}
+    Construct the sequence $\{s_n\}$ with $s_0 = *$ and $s_{n+1} = \sigma(s_n)$. Choosing $\sigma(*) = \mathbin{\&}1$ consistently:
+    \[
+    s_0 = *, \quad s_1 = \mathbin{\&}1, \quad s_2 = *11, \quad s_3 = \mathbin{\&}111, \quad \ldots
+    \]
+    This grows indefinitely, forming an infinite fixed point.
+\end{proof}
+
+\section{Cryptographic Applications}
+\begin{definition}
+    The extended length function $\hat{\text{Len}}: \mathcal{S}^* \to \mathbb{R} \cup \{\infty\}$ is:
+    \[
+    \hat{\text{Len}}(w) = \sum_{i=1}^{|w|} \text{Len}(w_i).
+    \]
+\end{definition}
+
+\begin{definition}
+    Define the hash function $H: \mathcal{S}^* \to \{0,1\}^k$ by:
+    \[
+    H(w) = \text{LSB}_k \left( \sum_{i=1}^{|w|} \hat{\text{Len}}(w_i) \cdot i \mod 2^k \right).
+    \]
+\end{definition}
+
+\begin{theorem}
+    $H$ is preimage-resistant under the assumption that computing $\hat{\text{Len}}(w)$ is computationally complex.
+\end{theorem}
+
+\begin{proof}
+    Given $y = H(w)$, finding $w$ requires inverting $\hat{\text{Len}}(w)$, which may include $\infty$. The non-determinism in $\sigma$ suggests that enumerating preimages is intractable.
+\end{proof}
+
+\section{Assembly Implementation}
+The following assembly code implements $H$, with \texttt{len\_function} handling symbol-specific lengths:
+
+\begin{lstlisting}
+section .text
+hash_function:
+    xor eax, eax        ; Clear accumulator
+    xor edx, edx        ; Clear index counter
+.loop:
+    cmp edx, ecx        ; End of input check
+    jge .done
+    movzx ecx, byte [esi + edx] ; Load character
+    call len_function   ; Compute Len
+    imul ebx, ecx       ; Multiply by position (edx + 1)
+    add eax, ebx        ; Add to hash
+    inc edx             ; Next position
+    jmp .loop
+.done:
+    and eax, 0xFFFFFFFF ; Modulo 2^32
+    ret
+
+len_function:
+    cmp cl, '1'
+    je .one
+    cmp cl, '&'
+    je .and
+    cmp cl, '*'
+    je .star
+    mov ecx, 1          ; Default for x or others
+    ret
+.one:
+    mov ecx, 1
+    ret
+.and:
+    mov ecx, 2          ; Assume x = 2 for &
+    ret
+.star:
+    mov ecx, 0xFFFFFFFF ; Represents infinity
+    ret
+\end{lstlisting}
+
+
+\section{Conclusion}
+This framework advances symbolic substitution with cryptographic and computational applications. Future work includes:
+\begin{itemize}
+    \item Formalizing rules as a context-sensitive grammar,
+    \item Empirically testing $H$’s collision resistance,
+    \item Exploring hardware acceleration.
+\end{itemize}
+
+\end{document}
