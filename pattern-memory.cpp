@@ -7,7 +7,59 @@
 #include <iomanip>
 #include <thread>
 #include <future>
+#include <string>
+
 #include "pattern.h"
+
+//------------------------------------------------------------
+// Memory data structure using a simple hash table with linear probing
+//------------------------------------------------------------
+template<typename Value>
+class Memory {
+private:
+    struct Entry {
+        std::string key;
+        Value value;
+        bool used;
+        Entry() : key(""), value(), used(false) {}
+    };
+
+    std::vector<Entry> table;
+    size_t capacity;
+
+public:
+    Memory(size_t cap) : capacity(cap), table(cap) {}
+
+    // Insert or update a key-value pair into memory.
+    void put(const std::string &key, const Value &value) {
+        uint64_t hash = hash_function_64(key.c_str(), key.size());
+        size_t index = hash % capacity;
+        // Use linear probing to resolve collisions.
+        while (table[index].used && table[index].key != key) {
+            index = (index + 1) % capacity;
+        }
+        table[index].key = key;
+        table[index].value = value;
+        table[index].used = true;
+    }
+
+    // Retrieve a value associated with a key. Returns true if found.
+    bool get(const std::string &key, Value &value_out) {
+        uint64_t hash = hash_function_64(key.c_str(), key.size());
+        size_t index = hash % capacity;
+        size_t start = index;
+        while (table[index].used) {
+            if (table[index].key == key) {
+                value_out = table[index].value;
+                return true;
+            }
+            index = (index + 1) % capacity;
+            if (index == start) break; // Avoid infinite loop.
+        }
+        return false;
+    }
+};
+//------------------------------------------------------------
 
 int main() {
     const size_t max_length = 1000000;   // Maximum string length: 1 million characters
@@ -79,6 +131,36 @@ int main() {
         std::cout << "Hash (hex): 0x" 
                   << std::hex << std::setw(16) << std::setfill('0') << hash_64 << std::endl;
     }
+
+    // --- Testing Memory Data Structure ---
+    std::cout << "\nTesting Memory Data Structure:" << std::endl;
+    // Create a memory store with a capacity of 1024 entries.
+    Memory<std::string> mem(1024);
+    // Insert some key-value pairs.
+    mem.put("apple", "red");
+    mem.put("banana", "yellow");
+    mem.put("grape", "purple");
+
+    // Retrieve and display the values.
+    std::string value;
+    if (mem.get("apple", value))
+        std::cout << "apple: " << value << std::endl;
+    else
+        std::cout << "apple not found" << std::endl;
+
+    if (mem.get("banana", value))
+        std::cout << "banana: " << value << std::endl;
+    else
+        std::cout << "banana not found" << std::endl;
+
+    if (mem.get("grape", value))
+        std::cout << "grape: " << value << std::endl;
+    else
+        std::cout << "grape not found" << std::endl;
+
+    // Attempt to retrieve a non-existent key.
+    if (!mem.get("orange", value))
+        std::cout << "orange not found" << std::endl;
 
     return 0;
 }
