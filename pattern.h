@@ -1,3 +1,6 @@
+#ifndef _PATTERN_
+#define _PATTERN_
+
 #include <cstdint>
 #include <iostream>
 #include <cstring>
@@ -112,3 +115,5 @@ std::string generate_random_string(size_t length) {
     }
     return result;
 }
+
+#endif
